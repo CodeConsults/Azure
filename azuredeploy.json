@@ -1,0 +1,697 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.451.19169",
+      "templateHash": "4498870280140260907"
+    }
+  },
+  "parameters": {
+    "installationName": {
+      "type": "string",
+      "defaultValue": "cluedin"
+    },
+    "identityName": {
+      "type": "string",
+      "defaultValue": "cluedin-user"
+    },
+    "cluedinChartVersion": {
+      "type": "string",
+      "defaultValue": "3.2.3",
+      "allowedValues": [
+        "3.2.3"
+      ]
+    },
+    "cluedinVersion": {
+      "type": "string",
+      "defaultValue": "3.2.3",
+      "allowedValues": [
+        "3.2.3",
+        "3.2.4-beta"
+      ]
+    },
+    "dockerUsername": {
+      "type": "string"
+    },
+    "dockerEmail": {
+      "type": "string"
+    },
+    "organizationName": {
+      "type": "string"
+    },
+    "organizationEmail": {
+      "type": "string"
+    },
+    "createCluster": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "nodeCountStandard": {
+      "type": "int"
+    },
+    "vmSizeStandard": {
+      "type": "string"
+    },
+    "nodeCountPerformance": {
+      "type": "int"
+    },
+    "vmSizePerformance": {
+      "type": "string"
+    },
+    "organizationPassword": {
+      "type": "secureString",
+      "minLength": 8
+    },
+    "sshKeyPassPhrase": {
+      "type": "secureString",
+      "maxLength": 64,
+      "minLength": 6
+    },
+    "dockerAccessToken": {
+      "type": "secureString"
+    },
+    "saPassword": {
+      "type": "secureString"
+    },
+    "nugetPatToken": {
+      "type": "secureString"
+    }
+  },
+  "functions": [],
+  "resources": [
+    {
+      "condition": "[parameters('createCluster')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2019-09-01",
+      "name": "[format('{0}-keyvault/docker-accesstoken', parameters('installationName'))]",
+      "properties": {
+        "value": "[parameters('dockerAccessToken')]",
+        "attributes": {
+          "enabled": true
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', parameters('installationName')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('createCluster')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2019-09-01",
+      "name": "[format('{0}-keyvault/sqlserver-sapassword', parameters('installationName'))]",
+      "properties": {
+        "value": "[parameters('saPassword')]",
+        "attributes": {
+          "enabled": true
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', parameters('installationName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "[format('{0}-identity', parameters('installationName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "identityName": {
+            "value": "[parameters('identityName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.451.19169",
+              "templateHash": "14447038927202439191"
+            }
+          },
+          "parameters": {
+            "identityName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "roleDefinitionId": {
+              "type": "string",
+              "defaultValue": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2018-11-30",
+              "name": "[parameters('identityName')]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2020-04-01-preview",
+              "name": "[guid(resourceGroup().id, parameters('identityName'), parameters('roleDefinitionId'))]",
+              "properties": {
+                "roleDefinitionId": "[format('{0}/providers/Microsoft.Authorization/roleDefinitions/{1}', subscription().id, parameters('roleDefinitionId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))).principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "userIdentity": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+            },
+            "userIdentityObjectId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))).principalId]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "condition": "[parameters('createCluster')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "[format('{0}-keyvault', parameters('installationName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "identity": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName'))), '2019-10-01').outputs.userIdentityObjectId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.451.19169",
+              "templateHash": "12462869937892786991"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "defaultValue": "cluedin-keyvault"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "identity": {
+              "type": "string"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2019-09-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "tenantId": "[subscription().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "accessPolicies": [
+                  {
+                    "tenantId": "[subscription().tenantId]",
+                    "objectId": "[parameters('identity')]",
+                    "permissions": {
+                      "secrets": [
+                        "all"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('createCluster')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "[format('{0}-sshkeys', parameters('installationName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[format('{0}-keyvault', parameters('installationName'))]"
+          },
+          "identity": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName'))), '2019-10-01').outputs.userIdentity.value]"
+          },
+          "passPhrase": {
+            "value": "[parameters('sshKeyPassPhrase')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.451.19169",
+              "templateHash": "1060902998442798263"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string"
+            },
+            "scriptName": {
+              "type": "string",
+              "defaultValue": "cluedin-sshkeys"
+            },
+            "scriptVersion": {
+              "type": "string",
+              "defaultValue": "2.26.0"
+            },
+            "identity": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "passPhrase": {
+              "type": "secureString",
+              "maxLength": 64,
+              "minLength": 6
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2020-10-01",
+              "name": "[format('{0}-create', parameters('scriptName'))]",
+              "kind": "AzureCLI",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[parameters('identity')]": {}
+                }
+              },
+              "properties": {
+                "azCliVersion": "[parameters('scriptVersion')]",
+                "cleanupPreference": "OnSuccess",
+                "retentionInterval": "PT1H",
+                "timeout": "PT30M",
+                "arguments": "[parameters('passPhrase')]",
+                "scriptContent": "PASSPHRASE=$1;ssh-keygen -t rsa -f scratch -q -N \"$PASSPHRASE\";PRIVATE=$(cat scratch);PUBLIC=$(cat scratch.pub);jq -n --arg public \"$PUBLIC\" --arg private \"$PRIVATE\" '{keyinfo: { privateKey: $private, publicKey: $public }}' > $AZ_SCRIPTS_OUTPUT_PATH; echo COMPLETE!"
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2019-09-01",
+              "name": "[format('{0}/ssh-private-key', parameters('keyVaultName'))]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('{0}-create', parameters('scriptName')))).outputs.keyinfo.privateKey]",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deploymentScripts', format('{0}-create', parameters('scriptName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2019-09-01",
+              "name": "[format('{0}/ssh-public-key', parameters('keyVaultName'))]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('{0}-create', parameters('scriptName')))).outputs.keyinfo.publicKey]",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deploymentScripts', format('{0}-create', parameters('scriptName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "publicKey": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', format('{0}-create', parameters('scriptName')))).outputs.keyinfo.publicKey]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', parameters('installationName')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('createCluster')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "[format('{0}-aks', parameters('installationName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "identity": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName'))), '2019-10-01').outputs.userIdentity.value]"
+          },
+          "adminPublicKey": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-sshkeys', parameters('installationName'))), '2019-10-01').outputs.publicKey.value]"
+          },
+          "nodeCountStandard": {
+            "value": "[parameters('nodeCountStandard')]"
+          },
+          "nodeCountPerformance": {
+            "value": "[parameters('nodeCountPerformance')]"
+          },
+          "vmSizeStandard": {
+            "value": "[parameters('vmSizeStandard')]"
+          },
+          "vmSizePerformance": {
+            "value": "[parameters('vmSizePerformance')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.451.19169",
+              "templateHash": "17032241314269465124"
+            }
+          },
+          "parameters": {
+            "clusterName": {
+              "type": "string",
+              "defaultValue": "cluedin-aks"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "identity": {
+              "type": "string"
+            },
+            "nodeCountStandard": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "nodeCountPerformance": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "vmSizeStandard": {
+              "type": "string",
+              "defaultValue": "Standard_D2a_v4"
+            },
+            "vmSizePerformance": {
+              "type": "string",
+              "defaultValue": "Standard_D8a_v4"
+            },
+            "kubernetesVersion": {
+              "type": "string",
+              "defaultValue": "1.20.7"
+            },
+            "adminUsername": {
+              "type": "string",
+              "defaultValue": "azureuser"
+            },
+            "dnsPrefix": {
+              "type": "string",
+              "defaultValue": "cluedin"
+            },
+            "adminPublicKey": {
+              "type": "secureString"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.ContainerService/managedClusters",
+              "apiVersion": "2021-03-01",
+              "name": "[parameters('clusterName')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[parameters('identity')]": {}
+                }
+              },
+              "properties": {
+                "kubernetesVersion": "[parameters('kubernetesVersion')]",
+                "nodeResourceGroup": "[format('{0}-nodepool', parameters('clusterName'))]",
+                "dnsPrefix": "[parameters('dnsPrefix')]",
+                "networkProfile": {
+                  "loadBalancerSku": "standard"
+                },
+                "agentPoolProfiles": [
+                  {
+                    "name": "general",
+                    "count": "[parameters('nodeCountStandard')]",
+                    "vmSize": "[parameters('vmSizeStandard')]",
+                    "mode": "System",
+                    "nodeLabels": {
+                      "kubernetes.cluedin.com/node-group": "general"
+                    }
+                  },
+                  {
+                    "name": "performance",
+                    "count": "[parameters('nodeCountPerformance')]",
+                    "vmSize": "[parameters('vmSizePerformance')]",
+                    "mode": "User",
+                    "nodeLabels": {
+                      "kubernetes.cluedin.com/node-group": "performance"
+                    }
+                  }
+                ],
+                "linuxProfile": {
+                  "adminUsername": "[parameters('adminUsername')]",
+                  "ssh": {
+                    "publicKeys": [
+                      {
+                        "keyData": "[parameters('adminPublicKey')]"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-sshkeys', parameters('installationName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "[format('{0}-install', parameters('installationName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aksClusterName": {
+            "value": "[format('{0}-aks', parameters('installationName'))]"
+          },
+          "identity": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName'))), '2019-10-01').outputs.userIdentity.value]"
+          },
+          "dockerUsername": {
+            "value": "[parameters('dockerUsername')]"
+          },
+          "dockerEmail": {
+            "value": "[parameters('dockerEmail')]"
+          },
+          "dockerAccessToken": {
+            "value": "[parameters('dockerAccessToken')]"
+          },
+          "saPassword": {
+            "value": "[parameters('saPassword')]"
+          },
+          "cluedinChartVersion": {
+            "value": "[parameters('cluedinChartVersion')]"
+          },
+          "cluedinVersion": {
+            "value": "[parameters('cluedinVersion')]"
+          },
+          "nugetPatToken": {
+            "value": "[parameters('nugetPatToken')]"
+          },
+          "organizationName": {
+            "value": "[parameters('organizationName')]"
+          },
+          "organizationEmail": {
+            "value": "[parameters('organizationEmail')]"
+          },
+          "organizationPassword": {
+            "value": "[parameters('organizationPassword')]"
+          },
+          "keyVaultName": {
+            "value": "[format('{0}-keyvault', parameters('installationName'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.4.451.19169",
+              "templateHash": "1601925863692404048"
+            }
+          },
+          "parameters": {
+            "scriptVersion": {
+              "type": "string",
+              "defaultValue": "2.26.0"
+            },
+            "identity": {
+              "type": "string"
+            },
+            "aksClusterName": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "dockerUsername": {
+              "type": "string"
+            },
+            "dockerEmail": {
+              "type": "string"
+            },
+            "cluedinChartVersion": {
+              "type": "string"
+            },
+            "cluedinVersion": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string",
+              "defaultValue": "[utcNow()]"
+            },
+            "organizationName": {
+              "type": "string"
+            },
+            "organizationEmail": {
+              "type": "string"
+            },
+            "keyVaultName": {
+              "type": "string"
+            },
+            "dockerAccessToken": {
+              "type": "secureString"
+            },
+            "saPassword": {
+              "type": "secureString"
+            },
+            "nugetPatToken": {
+              "type": "secureString"
+            },
+            "organizationPassword": {
+              "type": "secureString"
+            }
+          },
+          "functions": [],
+          "resources": [
+            {
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2020-10-01",
+              "name": "cluedin-installation",
+              "kind": "AzureCLI",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[parameters('identity')]": {}
+                }
+              },
+              "properties": {
+                "azCliVersion": "[parameters('scriptVersion')]",
+                "cleanupPreference": "OnSuccess",
+                "retentionInterval": "PT1H",
+                "timeout": "PT1H",
+                "forceUpdateTag": "[parameters('timestamp')]",
+                "arguments": "[format('{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}', parameters('cluedinChartVersion'), parameters('cluedinVersion'), parameters('dockerUsername'), parameters('dockerEmail'), parameters('dockerAccessToken'), parameters('saPassword'), resourceGroup().name, parameters('aksClusterName'), parameters('nugetPatToken'), parameters('organizationName'), parameters('organizationEmail'), parameters('organizationPassword'))]",
+                "scriptContent": "#!/usr/bin/env bash\n\nCLUEDIN_CHARTVERSION=${1}\nCLUEDIN_VERSION=${2}\nDOCKER_USERNAME=${3}\nDOCKER_EMAIL=${4}\nDOCKER_ACCESSTOKEN=${5}\nSA_PASSWORD=${6}\nRESOURCE_GROUP=${7}\nAKS_CLUSTERNAME=${8}\nNUGET_PATTOKEN=${9}\nORG_NAME=${10}\nORG_EMAIL=${11}\nORG_PASSWORD=${12}\n\nYQ_VERSION='v4.11.1'\nNAMESPACE='cluedin'\nCLUEDIN_CHARTREPO='https://cluedin-io.github.io/Charts/'\nHAPROXY_CHARTREPO='https://haproxy-ingress.github.io/charts'\nHAPROXY_CHARTNAME='haproxy-ingress'\nPASSWORD=''\n\n# TODO: Empty value checking ..\n\necho \"--> Install YQ ..\"\ncurl -fsSL -o /usr/bin/yq \"https://github.com/mikefarah/yq/releases/download/$YQ_VERSION/yq_linux_amd64\" && chmod +x /usr/bin/yq\n\necho \"--> Install Helm ..\"\ncurl -s https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash\n\necho \"--> Install Kubernetes CLI ..\"\ncurl -LOs \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl\nmv ./kubectl /usr/bin/kubectl\n\necho \"--> Versions ..\"\nhelm version\nkubectl version --client\n\necho \"--> Add Helm chart repos ..\"\nhelm repo add cluedin $CLUEDIN_CHARTREPO \nhelm repo add haproxy $HAPROXY_CHARTREPO\n\necho \"--> Get 'values.yaml' ..\"\nhelm repo update && helm show values cluedin/cluedin --version $CLUEDIN_CHARTVERSION > values.yaml\n\necho \"--> Get credentials ..\"\naz aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_CLUSTERNAME --file kubeconfig\nchmod 400 kubeconfig\n\necho \"--> Create CLUEDIN namspace ..\"\nkubectl get ns $NAMESPACE --kubeconfig kubeconfig || kubectl create ns $NAMESPACE --kubeconfig kubeconfig\n\necho \"--> Create DOCKER secret ..\"\nkubectl get -n $NAMESPACE secret docker-registry-key --kubeconfig kubeconfig || kubectl create -n $NAMESPACE secret docker-registry docker-registry-key --docker-server=https://index.docker.io/v2/ --docker-username=$DOCKER_USERNAME --docker-password=$DOCKER_ACCESSTOKEN --docker-email=$DOCKER_EMAIL --kubeconfig kubeconfig\n\n# TODO: Create NUGET secret (patch template)\n\necho \"--> Install HAPROXY ..\"\nhelm upgrade --install -n $NAMESPACE haproxy haproxy/$HAPROXY_CHARTNAME --kubeconfig kubeconfig --wait\n\necho -n \"--> Waiting for external IP \"\nIP=\"\"\nwhile [ -z $IP ]; do\n  echo -n \"..\"\n  IP=$(kubectl get svc haproxy-haproxy-ingress --namespace $NAMESPACE --kubeconfig kubeconfig --template=\"{{range .status.loadBalancer.ingress}}{{.ip}}{{end}}\") \n  [ -z \"$IP\" ] && sleep 10\ndone\necho \".. Found External IP: $IP\"\n\necho \"--> Patch VALUES file ..\"\nexport EXTERNALIP=\"$IP\"\nexport SAPASSWORD=\"$SA_PASSWORD\"\nexport VERSION=\"$CLUEDIN_VERSION\"\nyq e '(.. | select(. == \"*3.2.3\")) |= sub(\"3.2.3\", env(VERSION))' -i values.yaml \nyq e '(.. | select(. == \"*127.0.0.1.nip.io\")) |= sub(\"127.0.0.1\", env(EXTERNALIP))' -i values.yaml\nyq e '.sqlserver.saPassword = env(SAPASSWORD)' -i values.yaml\nyq e '.cluedin.roles.crawling.count = 0' -i values.yaml\n\n# TODO: Patch persistence values (elasticsearch, redis, rabbitmq, sqlserver, neo4j, openrefine)\n# TODO: Patch memory values (cluedin/main, cluedin/processing, elasticsearch, neo4j, sqlserver, redis, rabbitmq )\n# TODO: Send certain pods to certain nodes (perf = cluedin/main, cluedin/processing, elasticsearch, neo4j, sqlserver)\n\necho \"--> Install CLUEDIN ..\"\nhelm upgrade --install -n $NAMESPACE cluedin cluedin/cluedin --values values.yaml --kubeconfig kubeconfig --wait --timeout 15m0s\n\necho -n \"--> Wait for CLUEDIN to be ready..\"\nINSTALL_STATUS=$(helm history cluedin --namespace $NAMESPACE --kubeconfig kubeconfig -o json | jq '.[-1] | {status: .status, description: .description}')\n\nwhile $(echo $INSTALL_STATUS | jq '.status' | grep -q \"pending\"); do\n  echo -n \"..\"\n  INSTALL_STATUS=$(helm history cluedin --namespace $NAMESPACE --kubeconfig kubeconfig -o json | jq '.[-1] | {status: .status, description: .description}') && sleep 10\ndone\n\nif $(echo $INSTALL_STATUS | jq .status | grep -q \"failed\"); then\n  REASON=$(echo $INSTALL_STATUS | jq .description)\n  echo \"Install Failed! Reason: $REASON\" \nelse\n  CONTINUE=1\nfi\n\nif [ \"$CONTINUE\" = \"1\" ]; then\n  echo \"--> Generate ADMIN PASSWORD \"\n  export ORG_NAME=$(echo \"$ORG_NAME\" | tr '[:upper:]' '[:lower:]')\n  export ORG_EMAIL=$(echo \"$ORG_EMAIL\" | tr '[:upper:]' '[:lower:]')\n  echo \"--> Create ADMIN secret ..\"\n  kubectl get -n $NAMESPACE secret \"$ORG_NAME-admin\" --kubeconfig kubeconfig || kubectl create -n $NAMESPACE secret generic \"$ORG_NAME-admin\" --from-literal=username=\"$ORG_EMAIL\" --from-literal=password=\"$ORG_PASSWORD\" --kubeconfig kubeconfig\n  export PASSWORD=$(kubectl get -n $NAMESPACE secret foobar-admin --kubeconfig kubeconfig -o jsonpath='{.data.password}' | base64 -d)\n  echo \"--> Create CLUEDIN Organization ..\"\n  yq e -n '.apiVersion = \"api.cluedin.com/v1\" | .kind = \"Organization\" | .metadata.name = env(ORG_NAME) + \"-organization\" | .spec.name = env(ORG_NAME) | .spec.adminUserSecret = env(ORG_NAME)+\"-admin\"' > organization.yaml\n  kubectl get -n $NAMESPACE org \"$ORG_NAME-organization\" --kubeconfig kubeconfig || kubectl -n $NAMESPACE --kubeconfig kubeconfig apply -f organization.yaml\nfi\n\necho \"--> Passback updates VALUES file ..\"\njq -n --arg values \"$(cat values.yaml)\" --arg status \"$INSTALL_STATUS\" --arg password \"$PASSWORD\" '{values: $values, installStatus: $status, password: $password}' > $AZ_SCRIPTS_OUTPUT_PATH\n\necho \".. COMPLETE!\"\n"
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2019-09-01",
+              "name": "[format('{0}/cluedin-admin-password', parameters('keyVaultName'))]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', 'cluedin-installation')).outputs.password]",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deploymentScripts', 'cluedin-installation')]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2019-09-01",
+              "name": "[format('{0}/helm-values-file', parameters('keyVaultName'))]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', 'cluedin-installation')).outputs.values]",
+                "attributes": {
+                  "enabled": true
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Resources/deploymentScripts', 'cluedin-installation')]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-aks', parameters('installationName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-identity', parameters('installationName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', parameters('installationName')))]"
+      ]
+    }
+  ]
+}
