@@ -1,0 +1,369 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler": "Microsoft.Azure.CreateUIDef",
+    "version": "0.1.2-preview",
+    "parameters": {
+        "config": {
+            "isWizard": true,
+            "basics": {
+                "description": "\n\n----\n\n# Welcome to CluedIn\n\n----\n\n##### This wizard will step you through the process of creating a new CluedIn instance running in your Azure subscription.\n\n---\n\n"
+            }
+        },
+        "resourceTypes": [
+            "microsoft.resources/resourcegroups"
+        ],
+        "basics": [
+            {
+                "name": "installationName",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Installation Name",
+                "defaultValue": "cluedin",
+                "toolTip": "Each installation must have a unique name.",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-z0-9A-Z]{1,20}$",
+                    "validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-20 characters long."
+                },
+                "visible": true
+            },
+            {
+                "name": "identityName",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Azure Identity Name",
+                "defaultValue": "cluedin-user",
+                "toolTip": "The identity used for this installation. This will be created as part of the deployment.",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-zA-Z0-9_.+-]{1,20}$",
+                    "validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-20 characters long."
+                },
+                "visible": true
+            }
+        ],
+        "steps": [
+            {
+                "name": "credentials",
+                "label": "Credentials",
+                "elements": [
+                    {
+                        "name": "infoMessage",
+                        "type": "Microsoft.Common.InfoBox",
+                        "visible": true,
+                        "options": {
+                            "icon": "Info",
+                            "text": "CluedIn requires credentials in order to access external systems.\n\nClick this text to jump to the CluedIn documentation pages for more information.",
+                            "uri": "https://www.cluedin.com"
+                        }
+                    },
+                    {
+                        "name": "dockerUsername",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Docker Username",
+                        "defaultValue": "",
+                        "toolTip": "Docker username for an account that has been given permissions to access CluedIn container images.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-z0-9]{4,30}$",
+                            "validationMessage": "Your Docker ID must be between 4 and 30 characters long, and can only contain numbers and lowercase letters."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "dockerEmail",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Docker Email",
+                        "defaultValue": "",
+                        "toolTip": "Docker email address for an account that has been given permissions to access CluedIn container images.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
+                            "validationMessage": "Email is not valid. Please re-enter."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "warningMessage",
+                        "type": "Microsoft.Common.InfoBox",
+                        "visible": true,
+                        "options": {
+                            "icon": "Warning",
+                            "text": "Please do not use your docker password, instead use a docker access token.\n\nClick this text to jump to the Docker documentation pages for more information on how to create one.",
+                            "uri": "https://docs.docker.com/docker-hub/access-tokens/"
+                        }
+                    },
+                    {
+                        "name": "dockerAccessToken",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "Docker Access Token",
+                            "confirmPassword": "Confirm password"
+                        },
+                        "toolTip": "",
+                        "constraints": {
+                            "required": true,
+                            "regex": "",
+                            "validationMessage": ""
+                        },
+                        "options": {
+                            "hideConfirmation": true
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "nugetPatToken",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "Nuget PAT Token",
+                            "confirmPassword": "Confirm password"
+                        },
+                        "toolTip": "Personal Access Token for downloading artifacts from CluedIn's private NuGet feeds.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "",
+                            "validationMessage": ""
+                        },
+                        "options": {
+                            "hideConfirmation": true
+                        },
+                        "visible": true
+                    }
+                ]
+            },
+            {
+                "name": "cluedin-cluster",
+                "label": "CluedIn AKS Cluster Setup",
+                "elements": [
+                    {
+                        "name": "sshMessage",
+                        "type": "Microsoft.Common.InfoBox",
+                        "visible": true,
+                        "options": {
+                            "icon": "Info",
+                            "text": "This deployment will create an SSH key pair to secure the AKS nodes and store it in a keyvault instance.\nA pass phrase is needed for the private key as an extra layer of security.\n\nClick this text to jump to the CluedIn documentation pages for more information.",
+                            "uri": "https://www.cluedin.com"
+                        }
+                    },
+                    {
+                        "name": "sshKeyPassPhrase",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "SSH Key PassPhrase",
+                            "confirmPassword": "Confirm password"
+                        },
+                        "toolTip": "",
+                        "constraints": {
+                            "required": true,
+                            "regex": "",
+                            "validationMessage": ""
+                        },
+                        "options": {
+                            "hideConfirmation": true
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "saPassword",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "SQL Server SA Password",
+                            "confirmPassword": "Confirm password"
+                        },
+                        "toolTip": "The SA password to use when creating the SQL Server instance for CluedIn",
+                        "constraints": {
+                            "required": true,
+                            "regex": "",
+                            "validationMessage": ""
+                        },
+                        "options": {
+                            "hideConfirmation": true
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "standardNodeMessage",
+                        "type": "Microsoft.Common.InfoBox",
+                        "visible": true,
+                        "options": {
+                            "icon": "Info",
+                            "text": "The 'Standard' node pool is for [INSERT TEXT].\n\nClick this text to jump to the CluedIn documentation pages for more information.",
+                            "uri": "https://www.cluedin.com"
+                        }
+                    },
+                    {
+                        "name": "nodeCountStandard",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Standard Node Pool VM Count",
+                        "defaultValue": "1",
+                        "toolTip": "The number of node VMs to create in the 'Standard' pool.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[0-9]$",
+                            "validationMessage": "Only numeric characters are allowed."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "vmSizeStandard",
+                        "type": "Microsoft.Compute.SizeSelector",
+                        "label": "Standard Node Pool VM Size",
+                        "toolTip": "",
+                        "recommendedSizes": [
+                            "Standard_D2a_v4"
+                        ],
+                        "options": {
+                            "hideDiskTypeFilter": false
+                        },
+                        "osPlatform": "Linux",
+                        "count": "[steps('cluedin-cluster').nodeCountStandard]",
+                        "visible": true
+                    },
+                    {
+                        "name": "performanceNodeMessage",
+                        "type": "Microsoft.Common.InfoBox",
+                        "visible": true,
+                        "options": {
+                            "icon": "Info",
+                            "text": "The 'Performance' node pool is for [INSERT TEXT].\n\nClick this text to jump to the CluedIn documentation pages for more information.",
+                            "uri": "https://www.cluedin.com"
+                        }
+                    },
+                    {
+                        "name": "nodeCountPerformance",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Performance Node Pool VM Count",
+                        "defaultValue": "1",
+                        "toolTip": "The number of node VMs to create in the 'Standard' pool.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[0-9]$",
+                            "validationMessage": "Only numeric characters are allowed."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "vmSizePerformance",
+                        "type": "Microsoft.Compute.SizeSelector",
+                        "label": "Performance Node Pool VM Size",
+                        "toolTip": "",
+                        "recommendedSizes": [
+                            "Standard_D8a_v4"
+                        ],
+                        "options": {
+                            "hideDiskTypeFilter": false
+                        },
+                        "osPlatform": "Linux",
+                        "count": "[steps('cluedin-cluster').nodeCountPerformance]",
+                        "visible": true
+                    }
+                ]
+            },
+            {
+                "name": "cluedin-deployment",
+                "label": "CluedIn Deployment Setup",
+                "elements": [
+                    {
+                        "name": "cluedinVersion",
+                        "type": "Microsoft.Common.DropDown",
+                        "label": "Cluedin Version",
+                        "defaultValue": "3.2.3",
+                        "toolTip": "The version of CluedIn to deploy. Beta versions are deployed at your own risk.",
+                        "constraints": {
+                            "required": false,
+                            "allowedValues": [
+                                {
+                                    "label": "3.2.3",
+                                    "value": "3.2.3"
+                                },
+                                {
+                                    "label": "3.2.4-beta",
+                                    "value": "3.2.4-beta"
+                                }
+                            ]
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "cluedinChartVersion",
+                        "type": "Microsoft.Common.DropDown",
+                        "label": "Cluedin Helm Chart Version",
+                        "defaultValue": "3.2.3",
+                        "toolTip": "This is the ",
+                        "constraints": {
+                            "required": true,
+                            "allowedValues": [
+                                {
+                                    "label": "3.2.3",
+                                    "value": "3.2.3"
+                                }
+                            ]
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "organizationName",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Organization Name",
+                        "defaultValue": "",
+                        "toolTip": "Initial organization to create inside CluedIn",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-z]{1,20}$",
+                            "validationMessage": "Only lowercase alphabetical characters are allowed, and the value must be 1-20 characters long."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "organizationEmail",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Administrator Email Address",
+                        "defaultValue": "",
+                        "toolTip": "CluedIn Administrator email address for logging into the CluedIn interface.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
+                            "validationMessage": "Email is not valid. Please re-enter."
+                        },
+                        "visible": true
+                    },
+                    {
+                        "name": "organizationPassword",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "CluedIn Administrator Password",
+                            "confirmPassword": "Confirm password"
+                        },
+                        "toolTip": "Administrator password for logging into the CluedIn interface.",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^.{8,}$",
+                            "validationMessage": "Must be greater than 8 characters."
+                        },
+                        "options": {
+                            "hideConfirmation": true
+                        },
+                        "visible": true
+                    }
+                ]
+            }
+        ],
+        "outputs": {
+            "installationName": "[basics('installationName')]",
+            "identityName": "[basics('identityName')]",
+            "dockerUsername": "[steps('credentials').dockerUsername]",
+            "dockerEmail": "[steps('credentials').dockerEmail]",
+            "dockerAccessToken": "[steps('credentials').dockerAccessToken]",
+            "nugetPatToken": "[steps('credentials').nugetPatToken]",
+            "sshKeyPassPhrase": "[steps('cluedin-cluster').sshKeyPassPhrase]",
+            "saPassword": "[steps('cluedin-cluster').saPassword]",
+            "nodeCountStandard": "[steps('cluedin-cluster').nodeCountStandard]",
+            "vmSizeStandard": "[steps('cluedin-cluster').vmSizeStandard]",
+            "nodeCountPerformance": "[steps('cluedin-cluster').nodeCountPerformance]",
+            "vmSizePerformance": "[steps('cluedin-cluster').vmSizePerformance]",
+            "cluedinVersion": "[steps('cluedin-deployment').cluedinVersion]",
+            "cluedinChartVersion": "[steps('cluedin-deployment').cluedinChartVersion]",
+            "organizationName": "[steps('cluedin-deployment').organizationName]",
+            "organizationEmail": "[steps('cluedin-deployment').organizationEmail]",
+            "organizationPassword": "[steps('cluedin-deployment').organizationPassword]"
+        }
+    }
+}
